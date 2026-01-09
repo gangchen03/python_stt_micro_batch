@@ -222,8 +222,9 @@ class TranscriptionServer:
             transcripted_base64_content = self.tensor_to_base64(torch_chunks, self.SAMPLING_RATE)
         
             # change the method transcribe/transcribe_by_gemini, and temp used transcribe_by_gemini instead of chirp_2.
-            #transcribe_thread_submit = self.transcribe(transcripted_base64_content, language_code)
-            transcript_json_result = await self.transcribe_by_gemini(transcripted_base64_content, LANGUAGE_CODE_DIC[language_code])
+            # transcribe_thread_submit = self.transcribe(transcripted_base64_content, language_code)
+            transcript_json_result = await self.transcribe(transcripted_base64_content, language_code)
+            #transcript_json_result = await self.transcribe_by_gemini(transcripted_base64_content, LANGUAGE_CODE_DIC[language_code])
             transcript_segment = self.find_first_no_transcript_segment(current_transcript_segments)
             if None != transcript_segment:
                 transcript_segment['transcript'] = transcript_json_result
@@ -274,7 +275,7 @@ class TranscriptionServer:
         base64_string = base64_bytes.decode("utf-8")
         return base64_string
 
-    # do transcribe use Chirp_2
+    # do transcribe use Chirp_3
     async def transcribe (
         self,
         base64_data,
@@ -290,8 +291,9 @@ class TranscriptionServer:
 
         long_audio_config = cloud_speech.RecognitionConfig(
             explicit_decoding_config={'encoding':ExplicitDecodingConfig.AudioEncoding.LINEAR16, 'sample_rate_hertz':16000, 'audio_channel_count':1},
-            language_codes=[language_code],
-            model="chirp",
+            # language_codes=[language_code],
+            language_codes=["auto"],
+            model="chirp_3",
             features=cloud_speech.RecognitionFeatures(
                 multi_channel_mode=1,
             ),
@@ -304,7 +306,8 @@ class TranscriptionServer:
         )
 
         # Get the recognition results
-        response = await client.recognize(request=audio_request)
+        loop = asyncio.get_running_loop()
+        response = await loop.run_in_executor(None, lambda: client.recognize(request=audio_request))
 
         request_end_time = (int)(datetime.now().timestamp() * 1000)
         response_time = request_end_time - start_time

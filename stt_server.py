@@ -22,17 +22,20 @@ class Listener(stt__pb2__grpc.ListenerServicer):
         '''Main rpc function for converting speech to text'''
         logger.info("do speech to text begins.")
         transcription_server = TranscriptionServer(
-            project_id=self.project, location=self.location, recognizer="-")
+            project_id=self.project, location=self.location, recognizer="_")
         async for requests in request_iterator:
             print("request_iterator begins:")
             chunk = requests.content.audio
             language_code = requests.config.streaming_config.config.language_codes[0]
-            task = asyncio.ensure_future(
-                transcription_server.recv_audio_bytes(chunk, language_code)) #创建task
-            result = await task # 立即等待task完成
-            #print(f"xxxxx={result}")
-            if result is not None:
-                yield result # 立即yield结果
+            try:
+                task = asyncio.ensure_future(
+                    transcription_server.recv_audio_bytes(chunk, language_code)) #创建task
+                result = await task # 立即等待task完成
+                #print(f"xxxxx={result}")
+                if result is not None:
+                    yield result # 立即yield结果
+            except Exception as e:
+                logger.error(f"Error processing request: {e}")
 
 
 async def serve(port, project, location):
